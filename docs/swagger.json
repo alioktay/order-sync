@@ -1,0 +1,421 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Receives shop and payment webhooks, persists order state, and exposes order status.",
+        "title": "example Order Sync API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:3000",
+    "basePath": "/",
+    "paths": {
+        "/api/orders/{orderId}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "Get order status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Order identifier",
+                        "name": "orderId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/order-sync_internal_contracts.OrderStatus"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/webhooks/payment": {
+            "post": {
+                "security": [
+                    {
+                        "WebhookSecret": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "webhooks"
+                ],
+                "summary": "Receive payment webhook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shared webhook secret",
+                        "name": "X-Webhook-Secret",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Payment webhook",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/order-sync_internal_payment.Webhook"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/order-sync_internal_contracts.WebhookResult"
+                        }
+                    },
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/order-sync_internal_contracts.WebhookResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/order-sync_internal_contracts.WebhookResult"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/webhooks/shop": {
+            "post": {
+                "security": [
+                    {
+                        "WebhookSecret": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "webhooks"
+                ],
+                "summary": "Receive shop order webhook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shared webhook secret",
+                        "name": "X-Webhook-Secret",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Shop order webhook",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/order-sync_internal_shop.Webhook"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/order-sync_internal_contracts.WebhookResult"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/order-sync_internal_contracts.WebhookResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/order-sync_internal_contracts.WebhookResult"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Returns OK when order-sync can reach PostgreSQL.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Service health",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "order-sync_internal_contracts.OrderItem": {
+            "type": "object",
+            "properties": {
+                "isHardware": {
+                    "type": "boolean"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "sku": {
+                    "type": "string"
+                }
+            }
+        },
+        "order-sync_internal_contracts.OrderState": {
+            "type": "string",
+            "enum": [
+                "PENDING",
+                "PAID",
+                "CANCELLED"
+            ],
+            "x-enum-varnames": [
+                "OrderStatePending",
+                "OrderStatePaid",
+                "OrderStateCancelled"
+            ]
+        },
+        "order-sync_internal_contracts.OrderStatus": {
+            "type": "object",
+            "properties": {
+                "attempts": {
+                    "type": "integer"
+                },
+                "customer_email": {
+                    "type": "string"
+                },
+                "due_at": {
+                    "type": "string"
+                },
+                "last_error": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "paid_at": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "$ref": "#/definitions/order-sync_internal_contracts.PaymentStatus"
+                },
+                "sap_internal_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/order-sync_internal_contracts.OrderState"
+                },
+                "sync_status": {
+                    "$ref": "#/definitions/order-sync_internal_contracts.SyncStatus"
+                }
+            }
+        },
+        "order-sync_internal_contracts.PaymentStatus": {
+            "type": "string",
+            "enum": [
+                "PENDING",
+                "COMPLETED",
+                "FAILED",
+                "CANCELLED"
+            ],
+            "x-enum-varnames": [
+                "PaymentStatusPending",
+                "PaymentStatusCompleted",
+                "PaymentStatusFailed",
+                "PaymentStatusCancelled"
+            ]
+        },
+        "order-sync_internal_contracts.SyncStatus": {
+            "type": "string",
+            "enum": [
+                "PENDING",
+                "PROCESSING",
+                "SYNCED",
+                "WAITING",
+                "DEAD",
+                "CANCELLED"
+            ],
+            "x-enum-varnames": [
+                "SyncStatusPending",
+                "SyncStatusProcessing",
+                "SyncStatusSynced",
+                "SyncStatusWaiting",
+                "SyncStatusDead",
+                "SyncStatusCancelled"
+            ]
+        },
+        "order-sync_internal_contracts.WebhookResult": {
+            "type": "object",
+            "properties": {
+                "event_id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "order_payment_status": {
+                    "$ref": "#/definitions/order-sync_internal_contracts.OrderState"
+                },
+                "payment_status": {
+                    "$ref": "#/definitions/order-sync_internal_contracts.PaymentStatus"
+                },
+                "sync_status": {
+                    "$ref": "#/definitions/order-sync_internal_contracts.SyncStatus"
+                }
+            }
+        },
+        "order-sync_internal_payment.Webhook": {
+            "type": "object",
+            "properties": {
+                "event_id": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "$ref": "#/definitions/order-sync_internal_contracts.PaymentStatus"
+                },
+                "reference_order_id": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "order-sync_internal_shop.Webhook": {
+            "type": "object",
+            "properties": {
+                "customer_email": {
+                    "type": "string"
+                },
+                "event_id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/order-sync_internal_contracts.OrderItem"
+                    }
+                },
+                "order_id": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "WebhookSecret": {
+            "type": "apiKey",
+            "name": "X-Webhook-Secret",
+            "in": "header"
+        }
+    }
+}

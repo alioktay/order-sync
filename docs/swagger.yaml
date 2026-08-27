@@ -1,0 +1,282 @@
+basePath: /
+definitions:
+  order-sync_internal_contracts.OrderItem:
+    properties:
+      isHardware:
+        type: boolean
+      price:
+        type: number
+      quantity:
+        type: integer
+      sku:
+        type: string
+    type: object
+  order-sync_internal_contracts.OrderState:
+    enum:
+    - PENDING
+    - PAID
+    - CANCELLED
+    type: string
+    x-enum-varnames:
+    - OrderStatePending
+    - OrderStatePaid
+    - OrderStateCancelled
+  order-sync_internal_contracts.OrderStatus:
+    properties:
+      attempts:
+        type: integer
+      customer_email:
+        type: string
+      due_at:
+        type: string
+      last_error:
+        type: string
+      order_id:
+        type: string
+      paid_at:
+        type: string
+      payment_status:
+        $ref: '#/definitions/order-sync_internal_contracts.PaymentStatus'
+      sap_internal_id:
+        type: string
+      status:
+        $ref: '#/definitions/order-sync_internal_contracts.OrderState'
+      sync_status:
+        $ref: '#/definitions/order-sync_internal_contracts.SyncStatus'
+    type: object
+  order-sync_internal_contracts.PaymentStatus:
+    enum:
+    - PENDING
+    - COMPLETED
+    - FAILED
+    - CANCELLED
+    type: string
+    x-enum-varnames:
+    - PaymentStatusPending
+    - PaymentStatusCompleted
+    - PaymentStatusFailed
+    - PaymentStatusCancelled
+  order-sync_internal_contracts.SyncStatus:
+    enum:
+    - PENDING
+    - PROCESSING
+    - SYNCED
+    - WAITING
+    - DEAD
+    - CANCELLED
+    type: string
+    x-enum-varnames:
+    - SyncStatusPending
+    - SyncStatusProcessing
+    - SyncStatusSynced
+    - SyncStatusWaiting
+    - SyncStatusDead
+    - SyncStatusCancelled
+  order-sync_internal_contracts.WebhookResult:
+    properties:
+      event_id:
+        type: string
+      message:
+        type: string
+      order_id:
+        type: string
+      order_payment_status:
+        $ref: '#/definitions/order-sync_internal_contracts.OrderState'
+      payment_status:
+        $ref: '#/definitions/order-sync_internal_contracts.PaymentStatus'
+      sync_status:
+        $ref: '#/definitions/order-sync_internal_contracts.SyncStatus'
+    type: object
+  order-sync_internal_payment.Webhook:
+    properties:
+      event_id:
+        type: string
+      payment_status:
+        $ref: '#/definitions/order-sync_internal_contracts.PaymentStatus'
+      reference_order_id:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  order-sync_internal_shop.Webhook:
+    properties:
+      customer_email:
+        type: string
+      event_id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/order-sync_internal_contracts.OrderItem'
+        type: array
+      order_id:
+        type: string
+    type: object
+host: localhost:3000
+info:
+  contact: {}
+  description: Receives shop and payment webhooks, persists order state, and exposes
+    order status.
+  title: example Order Sync API
+  version: "1.0"
+paths:
+  /api/orders/{orderId}:
+    get:
+      parameters:
+      - description: Order identifier
+        in: path
+        name: orderId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/order-sync_internal_contracts.OrderStatus'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get order status
+      tags:
+      - orders
+  /api/webhooks/payment:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Shared webhook secret
+        in: header
+        name: X-Webhook-Secret
+        type: string
+      - description: Payment webhook
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/order-sync_internal_payment.Webhook'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/order-sync_internal_contracts.WebhookResult'
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/order-sync_internal_contracts.WebhookResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/order-sync_internal_contracts.WebhookResult'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - WebhookSecret: []
+      summary: Receive payment webhook
+      tags:
+      - webhooks
+  /api/webhooks/shop:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Shared webhook secret
+        in: header
+        name: X-Webhook-Secret
+        type: string
+      - description: Shop order webhook
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/order-sync_internal_shop.Webhook'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/order-sync_internal_contracts.WebhookResult'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/order-sync_internal_contracts.WebhookResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/order-sync_internal_contracts.WebhookResult'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - WebhookSecret: []
+      summary: Receive shop order webhook
+      tags:
+      - webhooks
+  /health:
+    get:
+      description: Returns OK when order-sync can reach PostgreSQL.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Service health
+      tags:
+      - system
+securityDefinitions:
+  WebhookSecret:
+    in: header
+    name: X-Webhook-Secret
+    type: apiKey
+swagger: "2.0"

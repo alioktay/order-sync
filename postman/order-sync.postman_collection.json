@@ -1,0 +1,9 @@
+{
+  "info": {"name": "Order Sync - Go", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "item": [{"name":"Order Sync", "item":[
+    {"name":"Health", "request":{"method":"GET","url":"{{baseUrl}}/health"}},
+    {"name":"Shop webhook", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"X-Webhook-Secret","value":"{{webhookSecret}}"}],"body":{"mode":"raw","raw":"{}"},"url":"{{baseUrl}}/api/webhooks/shop"}},
+    {"name":"Payment webhook", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"X-Webhook-Secret","value":"{{webhookSecret}}"}],"body":{"mode":"raw","raw":"{}"},"url":"{{baseUrl}}/api/webhooks/payment"}},
+    {"name":"Get order status", "request":{"method":"GET","url":"{{baseUrl}}/api/orders/{{orderId}}"}}
+  ]}]
+}

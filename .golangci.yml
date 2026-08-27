@@ -1,0 +1,30 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - nilerr
+    - nilnesserr
+    - noctx
+    - prealloc
+    - revive
+    - testifylint
+    - unconvert
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+  exclusions:
+    rules:
+      - path: "_test\\.go$"
+        linters:
+          - bodyclose
+          - noctx
+
+formatters:
+  enable:
+    - gofmt

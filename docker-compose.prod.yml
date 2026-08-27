@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: order-sync-postgres
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB must be set}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    networks:
+      - order-sync-shared
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  order-sync:
+    image: ${ORDER_SYNC_IMAGE_PREFIX:-ghcr.io/alioktay/order-sync}:${ORDER_SYNC_IMAGE_TAG:-latest}
+    container_name: order-sync-api
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
+      SAP_API_URL: ${SAP_API_URL:?SAP_API_URL must be set}
+      HARDWARE_SYNC_DELAY_SECONDS: ${HARDWARE_SYNC_DELAY_SECONDS:-30}
+      SAP_TIMEOUT_MS: ${SAP_TIMEOUT_MS:-3000}
+      SAP_ATTEMPTS_BEFORE_WAITING: ${SAP_ATTEMPTS_BEFORE_WAITING:-3}
+      SAP_MAX_ATTEMPTS: ${SAP_MAX_ATTEMPTS:-5}
+      SAP_RECOVERY_WINDOW_SECONDS: ${SAP_RECOVERY_WINDOW_SECONDS:-900}
+      SAP_LISTENER_RECONNECT_MAX_MS: ${SAP_LISTENER_RECONNECT_MAX_MS:-1000}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?WEBHOOK_SECRET must be set}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - order-sync-shared
+      - web_network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web_network"
+
+      # Security headers and HTTP -> HTTPS redirect.
+      - "traefik.http.middlewares.order-sync-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.order-sync-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.order-sync-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.order-sync-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.order-sync-redirect.redirectscheme.permanent=true"
+
+      # HTTP router.
+      - "traefik.http.routers.order-sync-http.rule=Host(`order-sync.alioktay.com`)"
+      - "traefik.http.routers.order-sync-http.entrypoints=web"
+      - "traefik.http.routers.order-sync-http.middlewares=order-sync-redirect"
+      - "traefik.http.routers.order-sync-http.service=order-sync-api"
+
+      # HTTPS router.
+      - "traefik.http.routers.order-sync-https.rule=Host(`order-sync.alioktay.com`)"
+      - "traefik.http.routers.order-sync-https.entrypoints=websecure"
+      - "traefik.http.routers.order-sync-https.tls=true"
+      - "traefik.http.routers.order-sync-https.tls.certresolver=myresolver"
+      - "traefik.http.routers.order-sync-https.middlewares=order-sync-headers"
+      - "traefik.http.routers.order-sync-https.service=order-sync-api"
+
+      # API listens on port 3000 inside the container.
+      - "traefik.http.services.order-sync-api.loadbalancer.server.port=3000"
+
+networks:
+  order-sync-shared:
+    name: order-sync-shared
+  web_network:
+    external: true
+
+volumes:
+  postgres_prod_data:

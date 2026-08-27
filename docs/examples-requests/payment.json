@@ -1,0 +1,6 @@
+{
+  "event_id": "evt_pay_112233",
+  "reference_order_id": "ORD-2026-1044",
+  "payment_status": "COMPLETED",
+  "timestamp": "2026-08-19T09:30:00Z"
+}

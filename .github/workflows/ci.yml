@@ -1,0 +1,48 @@
+name: order-sync CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_DB: order_sync
+      POSTGRES_USER: order_sync
+      POSTGRES_PASSWORD: ci-password
+      DATABASE_URL: postgresql://order_sync:ci-password@postgres:5432/order_sync
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run package tests
+        run: go test ./...
+      - name: Run static analysis
+        run: go vet ./...
+      - name: Run race detector
+        run: go test -race ./...
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+      - name: Build order-sync image
+        run: docker compose build order-sync
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run PostgreSQL integration tests
+        run: go test -tags integration ./tests/integration -v

@@ -1,0 +1,9 @@
+{
+  "event_id": "evt_889900",
+  "order_id": "ORD-2026-1044",
+  "customer_email": "hello@example.com",
+  "items": [
+    { "sku": "NUKI-SL3", "quantity": 1, "price": 169.00 },
+    { "sku": "NUKI-SMART-HOSTING", "quantity": 1, "price": 39.00 }
+  ]
+}

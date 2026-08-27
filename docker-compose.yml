@@ -1,0 +1,57 @@
+name: order-sync
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-order_sync}
+      POSTGRES_USER: ${POSTGRES_USER:-order_sync}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-order_sync}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - order-sync-shared
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  order-sync:
+    build: .
+    environment:
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:-postgresql://order_sync:order_sync@postgres:5432/order_sync}
+      SAP_API_URL: ${SAP_API_URL:-http://mock-sap:4000/api/orders}
+      HARDWARE_SYNC_DELAY_SECONDS: ${HARDWARE_SYNC_DELAY_SECONDS:-30}
+      SAP_TIMEOUT_MS: ${SAP_TIMEOUT_MS:-3000}
+      SAP_ATTEMPTS_BEFORE_WAITING: ${SAP_ATTEMPTS_BEFORE_WAITING:-3}
+      SAP_MAX_ATTEMPTS: ${SAP_MAX_ATTEMPTS:-5}
+      SAP_RECOVERY_WINDOW_SECONDS: ${SAP_RECOVERY_WINDOW_SECONDS:-900}
+      SAP_LISTENER_RECONNECT_MAX_MS: ${SAP_LISTENER_RECONNECT_MAX_MS:-1000}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
+    ports:
+      - "3000:3000"
+    networks:
+      - order-sync-shared
+    restart: unless-stopped
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres_data:
+
+networks:
+  order-sync-shared:
+    name: order-sync-shared
